@@ -19,7 +19,7 @@ Now we can add two sparks to change both the state and the name to something els
 
 {% raw %}
 
-```
+```YAML
 type: custom:uix-forge
 forge:
   mold: badge
