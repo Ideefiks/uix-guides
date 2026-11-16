@@ -7,6 +7,7 @@ tags:
   - forge
   - sparks
 ---
+
 The heading badge only has three elements but can show key information in very little space. As standard however it allows little customisation, we can override `name`, choose an `icon` and choose the icon `color`. We cannot change the state and we cannot use templates. In this guide we will show how to add templating capability to all three elements (icon, name and state).
 
 The badges below show the current temperature as reported by a weather service, the first one is a standard badge.
