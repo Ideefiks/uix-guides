@@ -7,7 +7,7 @@ tags:
   - forge
   - sparks
 ---
-The heading badge only has three elements but can show key information in very little space. As standard however it allows little customisation, we can override `name`, set `icon` and choose the icon `color`. We cannot change the state and we cannot use templates. In this guide we will show how to add templating capability to all three elements (icon, name and state).
+The heading badge only has three elements but can show key information in very little space. As standard however it allows little customisation, we can override `name`, choose an `icon` and choose the icon `color`. We cannot change the state and we cannot use templates. In this guide we will show how to add templating capability to all three elements (icon, name and state).
 
 The badges below show the current temperature as reported by a weather service, the first one is a standard badge.
 
@@ -15,7 +15,9 @@ The badges below show the current temperature as reported by a weather service, 
 
 UIX can forge `name` and `icon` and add template capability to both, but not the state because the badge has no entry key for the state. We can get around this limitation by using the search spark, which can look for a specific text and change it into a different text (which can be a template). For this to work the state needs to be a fixed string so the search spark knows what to look for. The only way to achieve this is by setting `state_content: name` and setting this to a fixed string `name: LookForThis`. Take a look at the second badge to see what this achieves.
 
-Now we can add two sparks to change both the state and the name to something else (for this specific example forging the name and icon would have been possible without the sparks but by using them we can also catch unavailability of the state).
+Now we can add two sparks to change both the state and the name to something else, in this example:
+- The state shows the current temperature, unless current wind speed is 40 or higher, in which case we show wind speed
+- We show the (abbreviated) name of the weather institute, unless it issued a warning for severe weather, in which case we show the warning 
 
 {% raw %}
 
@@ -29,11 +31,15 @@ forge:
       query: state-display
       actions:
         replace_text:
-          find: name
+          find: LookForThis
           replace: >
             {% if not states('sensor.tulpenlaan_current_temperature') in
             ['unavailable', 'unknown'] %}
-              {{ states('sensor.tulpenlaan_current_temperature', with_unit=true) }}
+              {% if states('sensor.tulpenlaan_current_wind_speed') | float(0) < 40 %}          
+                {{ states('sensor.tulpenlaan_current_temperature', with_unit=true) }}
+              {% else %}
+                {{ states('sensor.tulpenlaan_current_wind_speed') | float(0) | round(0) ~ ' kph'}}
+              {% endif %}
             {% else %}
               {{ ' °C' }}      
             {% endif %}
@@ -42,7 +48,7 @@ forge:
       query: span.label
       actions:
         replace_text:
-          find: name
+          find: LookForThis
           replace: >
             {% set warnings =
             state_attr('binary_sensor.weather_warning_tulpenlaan',
@@ -54,7 +60,16 @@ element:
   entity: sensor.tulpenlaan_current_temperature
   state_content: name
   show_name: true
-  name: name
+  name: LookForThis
+```
+
+{% endraw %}
+
+{% include admonition.html type="tip" title="DOM navigation" body="To learn more on how to find where the spark should search, see https://uix.lf.technology/concepts/dom/#uix_style_path0-specific-helper %}
+
+Next, we will dynamically change the icon based on the current weather (this requires a template sensor which gets its data from your favourite weather integration using `action: weather.get_forecasts`). This does not require a spark, we can template `icon` directly and add the following
+
+```YAML
   icon: |-
     {%
      set condition = state_attr('sensor.tulpenlaan_forecast_hourly', 'forecast') | selectattr('datetime', '>', (now() - timedelta(hours=0.5)).isoformat()) | 
@@ -103,10 +118,28 @@ element:
     {% else %}
     {{ 'local:material-symbols-light--partly-cloudy-day-outline-rounded' }}
     {% endif %}
-  tap_action:
-    action: more-info
-    entity: weather.tulpenlaan
-  double_tap_action:
-    action: more-info
-    entity: camera.radar_tulpenlaan
 ```
+
+{% endraw %}
+
+{% include admonition.html type="tip" title="Icons" body="The example above use material-symbols-light icons but you can use whatever you prefer, the default MDI icon set also includes all weather symbols. %}
+
+With this the badge looks like the third one above, and all three elements change dynamically. To get to the fourth, which changes the text color for warnings to orangered, we need to add one more thing
+
+{% raw %}
+
+```YAML
+  uix:
+    style:
+      ha-badge $: >
+
+        {% if  states('binary_sensor.weather_warning_tulpenlaan') in ['off',
+        'unavailable', 'unknown'] %}
+          .label, slot[name="name"] {
+            color: orangered !important;
+          }
+        {% endif %}
+```
+
+{% endraw %}
+
